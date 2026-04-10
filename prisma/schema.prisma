@@ -1,0 +1,1229 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MULTI-TENANCY & AUTHENTICATION
+// Each "Organization" is a builder/developer company (tenant)
+// ═══════════════════════════════════════════════════════════════
+
+model Organization {
+  id              String   @id @default(cuid())
+  name            String
+  slug            String   @unique
+  logo            String?
+  phone           String?
+  email           String?
+  website         String?
+  addressLine1    String?
+  addressLine2    String?
+  city            String?
+  state           String?
+  country         String   @default("PK")
+  postalCode      String?
+  taxId           String?  // FBR NTN or GST number
+  cnicNumber      String?
+  subscriptionPlan SubscriptionPlan @default(STARTER)
+  subscriptionStatus SubscriptionStatus @default(ACTIVE)
+  subscriptionExpiresAt DateTime?
+  smsQuota        Int      @default(100)
+  storageQuotaMb  Int      @default(1024)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Bank details for customer-facing payment info
+  bankAccounts    OrganizationBankAccount[]
+
+  users           User[]
+  projects        Project[]
+  customers       Customer[]
+  vendors         Vendor[]
+  ledgerAccounts  LedgerAccount[]
+  employees       Employee[]
+  auditLogs       AuditLog[]
+  notificationTemplates NotificationTemplate[]
+
+  @@map("organizations")
+}
+
+model OrganizationBankAccount {
+  id             String  @id @default(cuid())
+  organizationId String
+  bankName       String
+  accountTitle   String
+  accountNumber  String
+  iban           String?
+  branchCode     String?
+  swiftCode      String?
+  accountType    String  @default("current") // current, savings, jazzcash, easypaisa
+  isActive       Boolean @default(true)
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("organization_bank_accounts")
+}
+
+model User {
+  id              String    @id @default(cuid())
+  organizationId  String
+  email           String    @unique
+  name            String
+  passwordHash    String
+  phone           String?
+  avatar          String?
+  cnic            String?
+  role            UserRole  @default(STAFF)
+  isActive        Boolean   @default(true)
+  emailVerified   DateTime?
+  lastLogin       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  accounts        Account[]
+  sessions        Session[]
+
+  // Relations
+  assignedPlots       Plot[]        @relation("PlotAssignedAgent")
+  bookingsCreated     Booking[]     @relation("BookingCreatedBy")
+  paymentVerifications PaymentRecord[] @relation("PaymentVerifiedBy")
+  maintenanceAssigned MaintenanceRequest[] @relation("MaintenanceAssignee")
+  maintenanceCreated  MaintenanceRequest[] @relation("MaintenanceCreator")
+  constructionUpdates ConstructionUpdate[]
+  notes               Note[]
+  auditLogs           AuditLog[]
+  notifications       Notification[]
+
+  @@index([organizationId])
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PROJECT / HOUSING SOCIETY MANAGEMENT
+// ═══════════════════════════════════════════════════════════════
+
+model Project {
+  id              String        @id @default(cuid())
+  organizationId  String
+  name            String
+  slug            String
+  description     String?       @db.Text
+  type            ProjectType
+  status          ProjectStatus @default(PLANNING)
+
+  // Location
+  addressLine1    String?
+  city            String?
+  state           String?
+  country         String        @default("PK")
+  latitude        Float?
+  longitude       Float?
+  mapBoundary     Json?         // GeoJSON polygon for society boundary
+
+  // Details
+  totalArea       Float?        // in marlas/kanals
+  areaUnit        String        @default("marla") // marla, kanal, sqft, sqm
+  totalPlots      Int           @default(0)
+  startDate       DateTime?
+  expectedCompletion DateTime?
+
+  // Financials
+  totalBudget     Decimal?      @db.Decimal(14, 2)
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  organization    Organization  @relation(fields: [organizationId], references: [id])
+  blocks          Block[]
+  plots           Plot[]
+  constructionPhases ConstructionPhase[]
+  documents       Document[]
+  transactions    Transaction[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+  @@index([status])
+  @@map("projects")
+}
+
+model Block {
+  id          String  @id @default(cuid())
+  projectId   String
+  name        String  // e.g., "Block A", "Sector 1"
+  description String?
+
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  plots       Plot[]
+
+  @@unique([projectId, name])
+  @@map("blocks")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LAND & PLOT MANAGEMENT
+// ═══════════════════════════════════════════════════════════════
+
+model Plot {
+  id              String      @id @default(cuid())
+  projectId       String
+  blockId         String?
+  plotNumber       String
+  type            PlotType
+  status          PlotStatus  @default(AVAILABLE)
+
+  // Dimensions
+  size            Float                // numeric size
+  sizeUnit        String   @default("marla") // marla, kanal, sqft, sqm
+  frontLength     Float?
+  depth           Float?
+
+  // Location within project
+  street          String?
+  sector          String?
+  mapCoordinates  Json?     // GeoJSON for plot boundaries
+  facingDirection String?   // North, South, East, West, Corner
+
+  // Pricing
+  basePrice       Decimal   @db.Decimal(14, 2)
+  premiumAmount   Decimal   @default(0) @db.Decimal(14, 2) // corner, park-facing, etc.
+  totalPrice      Decimal   @db.Decimal(14, 2) // basePrice + premiumAmount
+  pricePerUnit    Decimal?  @db.Decimal(14, 2) // price per marla/sqft
+
+  // Development
+  developmentCharges Decimal? @db.Decimal(14, 2)
+  isConstructed   Boolean   @default(false)
+
+  // Assignment
+  assignedAgentId String?
+  notes           String?   @db.Text
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  project         Project   @relation(fields: [projectId], references: [id])
+  block           Block?    @relation(fields: [blockId], references: [id])
+  assignedAgent   User?     @relation("PlotAssignedAgent", fields: [assignedAgentId], references: [id])
+  bookings        Booking[]
+  maintenanceRequests MaintenanceRequest[]
+  images          PlotImage[]
+
+  @@unique([projectId, plotNumber])
+  @@index([status])
+  @@index([type])
+  @@index([projectId, blockId])
+  @@map("plots")
+}
+
+model PlotImage {
+  id        String   @id @default(cuid())
+  plotId    String
+  url       String
+  caption   String?
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  plot      Plot     @relation(fields: [plotId], references: [id], onDelete: Cascade)
+
+  @@map("plot_images")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CUSTOMER / CRM MANAGEMENT
+// ═══════════════════════════════════════════════════════════════
+
+model Customer {
+  id              String         @id @default(cuid())
+  organizationId  String
+  firstName       String
+  lastName        String
+  email           String?
+  phone           String
+  alternatePhone  String?
+  cnic            String?        // National ID (CNIC for Pakistan, Aadhaar for India)
+  dateOfBirth     DateTime?
+  fatherName      String?
+  address         String?
+  city            String?
+  state           String?
+  country         String         @default("PK")
+  postalCode      String?
+
+  // Portal access
+  portalPassword  String?        // Hashed - for customer portal login
+  portalEnabled   Boolean        @default(false)
+
+  // Employment / Financial
+  occupation      String?
+  employer        String?
+  monthlyIncome   Decimal?       @db.Decimal(14, 2)
+
+  // Emergency Contact
+  emergencyName   String?
+  emergencyPhone  String?
+  emergencyRelation String?
+
+  // Nominee
+  nomineeName     String?
+  nomineeCnic     String?
+  nomineeRelation String?
+
+  status          CustomerStatus @default(ACTIVE)
+  source          String?        // referral, walk-in, online, agent
+  notes           String?        @db.Text
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  organization    Organization   @relation(fields: [organizationId], references: [id])
+  bookings        Booking[]
+  paymentRecords  PaymentRecord[]
+  documents       Document[]
+  notesList       Note[]
+
+  @@index([organizationId])
+  @@index([phone])
+  @@index([cnic])
+  @@index([status])
+  @@map("customers")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BOOKING / SALES MANAGEMENT
+// ═══════════════════════════════════════════════════════════════
+
+model Booking {
+  id              String        @id @default(cuid())
+  bookingNumber   String        @unique // auto-generated: BK-2026-0001
+  customerId      String
+  plotId          String
+  createdById     String
+
+  status          BookingStatus @default(BOOKED)
+  bookingDate     DateTime      @default(now())
+
+  // Pricing snapshot at time of booking
+  totalPrice      Decimal       @db.Decimal(14, 2)
+  bookingAmount   Decimal       @db.Decimal(14, 2) // token/booking fee
+  downPayment     Decimal       @db.Decimal(14, 2)
+  developmentCharges Decimal    @default(0) @db.Decimal(14, 2)
+  possessionCharges  Decimal    @default(0) @db.Decimal(14, 2)
+  otherCharges    Decimal       @default(0) @db.Decimal(14, 2)
+  discount        Decimal       @default(0) @db.Decimal(14, 2)
+  netAmount       Decimal       @db.Decimal(14, 2) // total after discount
+
+  // Installment plan details
+  installmentPlanId String?
+  installmentMonths Int?         // 12, 24, 36, 60
+  monthlyInstallment Decimal?   @db.Decimal(14, 2)
+
+  // Transfer info (if plot transferred to new buyer)
+  isTransferred   Boolean       @default(false)
+  transferredFrom String?       // previous booking ID
+  transferDate    DateTime?
+  transferFee     Decimal?      @db.Decimal(14, 2)
+
+  // Cancellation
+  cancellationDate DateTime?
+  cancellationReason String?
+  refundAmount    Decimal?      @db.Decimal(14, 2)
+  deductionAmount Decimal?      @db.Decimal(14, 2)
+
+  // Possession
+  possessionDate  DateTime?
+  possessionNotes String?
+
+  notes           String?       @db.Text
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  customer        Customer      @relation(fields: [customerId], references: [id])
+  plot            Plot          @relation(fields: [plotId], references: [id])
+  createdBy       User          @relation("BookingCreatedBy", fields: [createdById], references: [id])
+  installmentPlan InstallmentPlan? @relation(fields: [installmentPlanId], references: [id])
+  installments    Installment[]
+  paymentRecords  PaymentRecord[]
+  documents       Document[]
+
+  @@index([customerId])
+  @@index([plotId])
+  @@index([status])
+  @@index([bookingDate])
+  @@map("bookings")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INSTALLMENT & PAYMENT PLANS
+// ═══════════════════════════════════════════════════════════════
+
+model InstallmentPlan {
+  id                  String   @id @default(cuid())
+  name                String   // e.g., "3 Year Plan", "5 Year Easy Plan"
+  description         String?
+  durationMonths      Int      // 12, 24, 36, 60
+  downPaymentPercent  Float    // e.g., 20.0 for 20%
+  frequency           InstallmentFrequency @default(MONTHLY)
+  gracePeriodDays     Int      @default(7)
+  latePenaltyPercent  Float    @default(0) // e.g., 2.0 for 2% per month
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  bookings            Booking[]
+
+  @@map("installment_plans")
+}
+
+model Installment {
+  id              String            @id @default(cuid())
+  bookingId       String
+  installmentNo   Int
+  type            InstallmentType   // DOWN_PAYMENT, MONTHLY, QUARTERLY, POSSESSION, etc.
+  amount          Decimal           @db.Decimal(14, 2)
+  dueDate         DateTime
+  status          InstallmentStatus @default(PENDING)
+
+  paidAmount      Decimal           @default(0) @db.Decimal(14, 2)
+  paidDate        DateTime?
+  latePenalty     Decimal           @default(0) @db.Decimal(14, 2)
+  waivedPenalty   Decimal           @default(0) @db.Decimal(14, 2)
+  balanceAmount   Decimal           @default(0) @db.Decimal(14, 2)
+
+  notes           String?
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  booking         Booking           @relation(fields: [bookingId], references: [id])
+  paymentRecords  PaymentRecord[]
+
+  @@index([bookingId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("installments")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PAYMENT RECORDING & VERIFICATION
+// ═══════════════════════════════════════════════════════════════
+
+model PaymentRecord {
+  id              String          @id @default(cuid())
+  receiptNumber   String          @unique // auto-generated: REC-2026-0001
+  customerId      String
+  bookingId       String
+  installmentId   String?
+
+  amount          Decimal         @db.Decimal(14, 2)
+  paymentMethod   PaymentMethod
+  status          PaymentStatus   @default(PENDING)
+
+  paymentDate     DateTime
+  referenceNumber String?         // bank transfer ref / cheque number
+  bankName        String?
+  proofUrl        String?         // uploaded receipt/screenshot
+  proofFileName   String?
+
+  // Cheque specific
+  chequeNumber    String?
+  chequeDate      DateTime?
+  chequeClearanceDate DateTime?
+  chequeStatus    ChequeStatus?
+
+  // Verification workflow
+  verifiedById    String?
+  verifiedAt      DateTime?
+  rejectionReason String?
+
+  notes           String?         @db.Text
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  customer        Customer        @relation(fields: [customerId], references: [id])
+  booking         Booking         @relation(fields: [bookingId], references: [id])
+  installment     Installment?    @relation(fields: [installmentId], references: [id])
+  verifiedBy      User?           @relation("PaymentVerifiedBy", fields: [verifiedById], references: [id])
+
+  @@index([customerId])
+  @@index([bookingId])
+  @@index([status])
+  @@index([paymentDate])
+  @@map("payment_records")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CONSTRUCTION PROGRESS TRACKING
+// ═══════════════════════════════════════════════════════════════
+
+model ConstructionPhase {
+  id          String   @id @default(cuid())
+  projectId   String
+  name        String   // e.g., "Foundation", "Structure", "Finishing"
+  description String?
+  sortOrder   Int      @default(0)
+  startDate   DateTime?
+  endDate     DateTime?
+  progress    Float    @default(0) // 0-100 percentage
+  status      ConstructionStatus @default(NOT_STARTED)
+  budget      Decimal? @db.Decimal(14, 2)
+  actualCost  Decimal? @db.Decimal(14, 2)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project     Project  @relation(fields: [projectId], references: [id])
+  updates     ConstructionUpdate[]
+  materials   MaterialRequisition[]
+
+  @@index([projectId])
+  @@map("construction_phases")
+}
+
+model ConstructionUpdate {
+  id              String   @id @default(cuid())
+  phaseId         String
+  updatedById     String
+  description     String   @db.Text
+  progress        Float    // overall progress at time of update
+  date            DateTime @default(now())
+  weather         String?
+  laborCount      Int?
+  issues          String?  @db.Text
+
+  createdAt       DateTime @default(now())
+
+  phase           ConstructionPhase @relation(fields: [phaseId], references: [id])
+  updatedBy       User     @relation(fields: [updatedById], references: [id])
+  images          ConstructionImage[]
+
+  @@index([phaseId])
+  @@map("construction_updates")
+}
+
+model ConstructionImage {
+  id          String   @id @default(cuid())
+  updateId    String
+  url         String
+  caption     String?
+  createdAt   DateTime @default(now())
+
+  update      ConstructionUpdate @relation(fields: [updateId], references: [id], onDelete: Cascade)
+
+  @@map("construction_images")
+}
+
+model MaterialRequisition {
+  id          String   @id @default(cuid())
+  phaseId     String
+  vendorId    String?
+  itemName    String
+  quantity    Float
+  unit        String   // bags, tons, pieces, etc.
+  unitCost    Decimal  @db.Decimal(14, 2)
+  totalCost   Decimal  @db.Decimal(14, 2)
+  status      RequisitionStatus @default(REQUESTED)
+  requestDate DateTime @default(now())
+  deliveryDate DateTime?
+  notes       String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  phase       ConstructionPhase @relation(fields: [phaseId], references: [id])
+  vendor      Vendor? @relation(fields: [vendorId], references: [id])
+
+  @@index([phaseId])
+  @@map("material_requisitions")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MAINTENANCE & WORK ORDERS
+// ═══════════════════════════════════════════════════════════════
+
+model MaintenanceRequest {
+  id            String              @id @default(cuid())
+  plotId        String?
+  assigneeId    String?
+  vendorId      String?
+  createdById   String
+
+  title         String
+  description   String              @db.Text
+  category      MaintenanceCategory
+  priority      Priority            @default(MEDIUM)
+  status        MaintenanceStatus   @default(OPEN)
+
+  scheduledDate DateTime?
+  completedDate DateTime?
+  estimatedCost Decimal?            @db.Decimal(14, 2)
+  actualCost    Decimal?            @db.Decimal(14, 2)
+
+  notes         String?             @db.Text
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  plot          Plot?               @relation(fields: [plotId], references: [id])
+  assignee      User?               @relation("MaintenanceAssignee", fields: [assigneeId], references: [id])
+  createdBy     User                @relation("MaintenanceCreator", fields: [createdById], references: [id])
+  vendor        Vendor?             @relation(fields: [vendorId], references: [id])
+  images        MaintenanceImage[]
+  comments      MaintenanceComment[]
+
+  @@index([status])
+  @@index([priority])
+  @@map("maintenance_requests")
+}
+
+model MaintenanceImage {
+  id                   String             @id @default(cuid())
+  maintenanceRequestId String
+  url                  String
+  caption              String?
+  type                 String             @default("before")
+  createdAt            DateTime           @default(now())
+
+  maintenanceRequest   MaintenanceRequest @relation(fields: [maintenanceRequestId], references: [id], onDelete: Cascade)
+
+  @@map("maintenance_images")
+}
+
+model MaintenanceComment {
+  id                   String             @id @default(cuid())
+  maintenanceRequestId String
+  userId               String?
+  comment              String             @db.Text
+  isInternal           Boolean            @default(false)
+  createdAt            DateTime           @default(now())
+
+  maintenanceRequest   MaintenanceRequest @relation(fields: [maintenanceRequestId], references: [id], onDelete: Cascade)
+
+  @@map("maintenance_comments")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// VENDOR MANAGEMENT
+// ═══════════════════════════════════════════════════════════════
+
+model Vendor {
+  id              String       @id @default(cuid())
+  organizationId  String
+  companyName     String
+  contactName     String?
+  email           String?
+  phone           String?
+  cnic            String?
+  address         String?
+  city            String?
+  state           String?
+  category        String?      // plumbing, electrical, material supplier, etc.
+  taxId           String?
+  rating          Float?
+  isActive        Boolean      @default(true)
+  notes           String?      @db.Text
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  maintenanceRequests MaintenanceRequest[]
+  transactions    Transaction[]
+  materialRequisitions MaterialRequisition[]
+  documents       Document[]
+
+  @@index([organizationId])
+  @@index([category])
+  @@map("vendors")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ACCOUNTING & FINANCE
+// ═══════════════════════════════════════════════════════════════
+
+model LedgerAccount {
+  id              String      @id @default(cuid())
+  organizationId  String
+  code            String      // account code e.g., "1001"
+  name            String
+  type            AccountType // ASSET, LIABILITY, EQUITY, INCOME, EXPENSE
+  parentId        String?
+  isActive        Boolean     @default(true)
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  parent          LedgerAccount? @relation("LedgerHierarchy", fields: [parentId], references: [id])
+  children        LedgerAccount[] @relation("LedgerHierarchy")
+  transactions    Transaction[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@map("ledger_accounts")
+}
+
+model Transaction {
+  id              String          @id @default(cuid())
+  projectId       String?
+  vendorId        String?
+  ledgerAccountId String?
+
+  type            TransactionType
+  category        String
+  description     String
+  amount          Decimal         @db.Decimal(14, 2)
+  date            DateTime
+
+  isRecurring     Boolean         @default(false)
+  referenceNumber String?
+  notes           String?         @db.Text
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  project         Project?        @relation(fields: [projectId], references: [id])
+  vendor          Vendor?         @relation(fields: [vendorId], references: [id])
+  ledgerAccount   LedgerAccount?  @relation(fields: [ledgerAccountId], references: [id])
+  attachments     TransactionAttachment[]
+
+  @@index([type])
+  @@index([date])
+  @@index([category])
+  @@map("transactions")
+}
+
+model TransactionAttachment {
+  id            String      @id @default(cuid())
+  transactionId String
+  fileName      String
+  fileUrl       String
+  fileType      String?
+  createdAt     DateTime    @default(now())
+
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@map("transaction_attachments")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HR & PAYROLL
+// ═══════════════════════════════════════════════════════════════
+
+model Employee {
+  id              String   @id @default(cuid())
+  organizationId  String
+  employeeCode    String
+  firstName       String
+  lastName        String
+  email           String?
+  phone           String?
+  cnic            String?
+  dateOfBirth     DateTime?
+  joiningDate     DateTime
+  department      String?
+  designation     String?
+  employmentType  EmploymentType @default(FULL_TIME)
+  status          EmployeeStatus @default(ACTIVE)
+
+  // Salary
+  baseSalary      Decimal  @db.Decimal(14, 2)
+  allowances      Decimal  @default(0) @db.Decimal(14, 2)
+  deductions      Decimal  @default(0) @db.Decimal(14, 2)
+  bankName        String?
+  bankAccount     String?
+
+  address         String?
+  emergencyName   String?
+  emergencyPhone  String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  attendances     Attendance[]
+  payrolls        Payroll[]
+
+  @@unique([organizationId, employeeCode])
+  @@index([organizationId])
+  @@map("employees")
+}
+
+model Attendance {
+  id          String   @id @default(cuid())
+  employeeId  String
+  date        DateTime @db.Date
+  checkIn     DateTime?
+  checkOut    DateTime?
+  status      AttendanceStatus @default(PRESENT)
+  hoursWorked Float?
+  overtime    Float?
+  latitude    Float?
+  longitude   Float?
+  notes       String?
+
+  createdAt   DateTime @default(now())
+
+  employee    Employee @relation(fields: [employeeId], references: [id])
+
+  @@unique([employeeId, date])
+  @@index([employeeId])
+  @@index([date])
+  @@map("attendances")
+}
+
+model Payroll {
+  id            String   @id @default(cuid())
+  employeeId    String
+  month         Int      // 1-12
+  year          Int
+  baseSalary    Decimal  @db.Decimal(14, 2)
+  allowances    Decimal  @default(0) @db.Decimal(14, 2)
+  overtime      Decimal  @default(0) @db.Decimal(14, 2)
+  deductions    Decimal  @default(0) @db.Decimal(14, 2)
+  tax           Decimal  @default(0) @db.Decimal(14, 2)
+  netSalary     Decimal  @db.Decimal(14, 2)
+  status        PayrollStatus @default(DRAFT)
+  paidDate      DateTime?
+  notes         String?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  employee      Employee @relation(fields: [employeeId], references: [id])
+
+  @@unique([employeeId, month, year])
+  @@index([employeeId])
+  @@map("payrolls")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DOCUMENT MANAGEMENT
+// ═══════════════════════════════════════════════════════════════
+
+model Document {
+  id           String       @id @default(cuid())
+  name         String
+  description  String?
+  type         DocumentType
+  category     String?
+  fileUrl      String
+  fileSize     Int?
+  mimeType     String?
+
+  projectId    String?
+  customerId   String?
+  bookingId    String?
+  vendorId     String?
+  uploadedById String?
+
+  expiryDate   DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  project      Project?     @relation(fields: [projectId], references: [id])
+  customer     Customer?    @relation(fields: [customerId], references: [id])
+  booking      Booking?     @relation(fields: [bookingId], references: [id])
+  vendor       Vendor?      @relation(fields: [vendorId], references: [id])
+
+  @@index([type])
+  @@map("documents")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NOTIFICATIONS & COMMUNICATION
+// ═══════════════════════════════════════════════════════════════
+
+model NotificationTemplate {
+  id              String   @id @default(cuid())
+  organizationId  String
+  name            String   // e.g., "payment_reminder_3days"
+  channel         NotificationChannel // SMS, WHATSAPP, EMAIL
+  subject         String?  // for email
+  body            String   @db.Text // template with {{variables}}
+  isActive        Boolean  @default(true)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, name])
+  @@map("notification_templates")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  title     String
+  message   String           @db.Text
+  type      NotificationType
+  channel   NotificationChannel @default(IN_APP)
+  isRead    Boolean          @default(false)
+  link      String?
+  createdAt DateTime         @default(now())
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model Note {
+  id          String    @id @default(cuid())
+  content     String    @db.Text
+  authorId    String
+  customerId  String?
+  isPrivate   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  author      User      @relation(fields: [authorId], references: [id])
+  customer    Customer? @relation(fields: [customerId], references: [id])
+
+  @@map("notes")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AUDIT & SYSTEM
+// ═══════════════════════════════════════════════════════════════
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  organizationId String?
+  userId         String?
+  action         String
+  entity         String
+  entityId       String
+  changes        Json?
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime @default(now())
+
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  user           User?    @relation(fields: [userId], references: [id])
+
+  @@index([entity, entityId])
+  @@index([organizationId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model SystemSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   @db.Text
+  type      String   @default("string")
+  group     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ENUMS
+// ═══════════════════════════════════════════════════════════════
+
+enum SubscriptionPlan {
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  SUSPENDED
+  CANCELLED
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  MANAGER
+  SALES_AGENT
+  ACCOUNTANT
+  SITE_ENGINEER
+  STAFF
+  CUSTOMER
+}
+
+enum ProjectType {
+  HOUSING_SOCIETY
+  APARTMENT_BUILDING
+  COMMERCIAL_PLAZA
+  MIXED_USE
+  VILLA_COMMUNITY
+  FARMHOUSE
+}
+
+enum ProjectStatus {
+  PLANNING
+  APPROVED
+  IN_DEVELOPMENT
+  PARTIALLY_DELIVERED
+  COMPLETED
+  ON_HOLD
+}
+
+enum PlotType {
+  RESIDENTIAL
+  COMMERCIAL
+  INDUSTRIAL
+  FARMHOUSE
+  APARTMENT
+  SHOP
+  OFFICE
+  PENTHOUSE
+}
+
+enum PlotStatus {
+  AVAILABLE
+  BOOKED
+  SOLD
+  TRANSFERRED
+  CANCELLED
+  ON_HOLD
+  RESERVED
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+  DEFAULTER
+  BLACKLISTED
+}
+
+enum BookingStatus {
+  BOOKED
+  CONFIRMED
+  ACTIVE
+  POSSESSION_GIVEN
+  TRANSFERRED
+  CANCELLED
+  DEFAULTER
+}
+
+enum InstallmentFrequency {
+  MONTHLY
+  QUARTERLY
+  HALF_YEARLY
+  YEARLY
+}
+
+enum InstallmentType {
+  BOOKING
+  DOWN_PAYMENT
+  MONTHLY
+  QUARTERLY
+  HALF_YEARLY
+  YEARLY
+  POSSESSION
+  DEVELOPMENT
+  CONFIRMATION
+  BALLOT
+  OTHER
+}
+
+enum InstallmentStatus {
+  PENDING
+  PARTIAL
+  PAID
+  OVERDUE
+  WAIVED
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CHEQUE
+  JAZZCASH
+  EASYPAISA
+  ONLINE
+  DEMAND_DRAFT
+  PAY_ORDER
+}
+
+enum PaymentStatus {
+  PENDING
+  VERIFIED
+  CONFIRMED
+  REJECTED
+  REFUNDED
+  CANCELLED
+}
+
+enum ChequeStatus {
+  PENDING
+  DEPOSITED
+  CLEARED
+  BOUNCED
+  CANCELLED
+}
+
+enum ConstructionStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  DELAYED
+  COMPLETED
+  ON_HOLD
+}
+
+enum RequisitionStatus {
+  REQUESTED
+  APPROVED
+  ORDERED
+  DELIVERED
+  CANCELLED
+}
+
+enum MaintenanceCategory {
+  PLUMBING
+  ELECTRICAL
+  HVAC
+  STRUCTURAL
+  PEST_CONTROL
+  LANDSCAPING
+  PAINTING
+  FLOORING
+  GENERAL
+  EMERGENCY
+  OTHER
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum MaintenanceStatus {
+  OPEN
+  ASSIGNED
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  INCOME
+  EXPENSE
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  DAILY_WAGE
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  ON_LEAVE
+  TERMINATED
+  RESIGNED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  HALF_DAY
+  LEAVE
+  HOLIDAY
+}
+
+enum PayrollStatus {
+  DRAFT
+  APPROVED
+  PAID
+  CANCELLED
+}
+
+enum DocumentType {
+  BOOKING_FORM
+  ALLOTMENT_LETTER
+  TRANSFER_DEED
+  PAYMENT_RECEIPT
+  CNIC_COPY
+  MAP
+  AGREEMENT
+  NOC
+  POSSESSION_LETTER
+  INSPECTION_REPORT
+  INSURANCE
+  TAX_DOCUMENT
+  OTHER
+}
+
+enum NotificationType {
+  PAYMENT_DUE
+  PAYMENT_RECEIVED
+  PAYMENT_OVERDUE
+  BOOKING_CONFIRMED
+  CONSTRUCTION_UPDATE
+  POSSESSION_READY
+  TRANSFER_NOTICE
+  SYSTEM
+  GENERAL
+}
+
+enum NotificationChannel {
+  IN_APP
+  SMS
+  WHATSAPP
+  EMAIL
+}
