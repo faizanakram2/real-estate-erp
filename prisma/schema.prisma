@@ -99,6 +99,7 @@ model User {
   notes               Note[]
   auditLogs           AuditLog[]
   notifications       Notification[]
+  commissions         Commission[]
 
   @@index([organizationId])
   @@map("users")
@@ -251,6 +252,7 @@ model Plot {
   bookings        Booking[]
   maintenanceRequests MaintenanceRequest[]
   images          PlotImage[]
+  priceHistory    PlotPriceHistory[]
 
   @@unique([projectId, plotNumber])
   @@index([status])
@@ -388,6 +390,7 @@ model Booking {
   installments    Installment[]
   paymentRecords  PaymentRecord[]
   documents       Document[]
+  commissions     Commission[]
 
   @@index([customerId])
   @@index([plotId])
@@ -964,6 +967,52 @@ model SystemSetting {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// SALES COMMISSION TRACKING
+// ═══════════════════════════════════════════════════════════════
+
+model Commission {
+  id             String           @id @default(cuid())
+  bookingId      String
+  agentId        String
+  commissionType CommissionType   @default(PERCENTAGE)
+  rate           Float            // percentage or fixed amount
+  baseAmount     Decimal          @db.Decimal(14, 2) // booking net amount
+  commissionAmount Decimal        @db.Decimal(14, 2)
+  status         CommissionStatus @default(PENDING)
+  paidDate       DateTime?
+  notes          String?
+
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  booking        Booking          @relation(fields: [bookingId], references: [id])
+  agent          User             @relation(fields: [agentId], references: [id])
+
+  @@index([agentId])
+  @@index([status])
+  @@map("commissions")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PLOT PRICE HISTORY
+// ═══════════════════════════════════════════════════════════════
+
+model PlotPriceHistory {
+  id          String   @id @default(cuid())
+  plotId      String
+  oldPrice    Decimal  @db.Decimal(14, 2)
+  newPrice    Decimal  @db.Decimal(14, 2)
+  reason      String?
+  changedById String?
+  createdAt   DateTime @default(now())
+
+  plot        Plot     @relation(fields: [plotId], references: [id], onDelete: Cascade)
+
+  @@index([plotId])
+  @@map("plot_price_history")
+}
+
+// ═══════════════════════════════════════════════════════════════
 // ENUMS
 // ═══════════════════════════════════════════════════════════════
 
@@ -1226,4 +1275,16 @@ enum NotificationChannel {
   SMS
   WHATSAPP
   EMAIL
+}
+
+enum CommissionType {
+  PERCENTAGE
+  FIXED
+}
+
+enum CommissionStatus {
+  PENDING
+  APPROVED
+  PAID
+  CANCELLED
 }
