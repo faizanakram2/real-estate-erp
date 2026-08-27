@@ -7,6 +7,88 @@ import { serverErrorResponse } from "@/lib/api-utils";
  * GET /api/reports/cash-flow?months=6
  * Monthly cash flow breakdown (inflows vs outflows)
  */
+
+/**
+ * @swagger
+ * /api/reports/cash-flow:
+ *   get:
+ *     summary: Get cash flow report
+ *     description: >
+ *       Returns a monthly cash flow breakdown showing confirmed payment
+ *       inflows, expense and payroll outflows, and the resulting net cash flow.
+ *       The report can be generated for a configurable number of previous
+ *       months.
+ *     tags:
+ *       - Reports
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: months
+ *         required: false
+ *         description: Number of months to include in the cash flow report
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 6
+ *           example: 6
+ *     responses:
+ *       200:
+ *         description: Cash flow report generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 summary:
+ *                   type: object
+ *                   properties:
+ *                     totalInflow:
+ *                       type: number
+ *                       description: Total confirmed payment inflow for the selected period
+ *                       example: 15000000
+ *                     totalOutflow:
+ *                       type: number
+ *                       description: Total expenses and paid payroll for the selected period
+ *                       example: 8500000
+ *                     netCashFlow:
+ *                       type: number
+ *                       description: Total inflow minus total outflow
+ *                       example: 6500000
+ *                 monthly:
+ *                   type: array
+ *                   description: Monthly cash flow breakdown
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       month:
+ *                         type: string
+ *                         description: Month label
+ *                         example: "Aug 2026"
+ *                       inflow:
+ *                         type: number
+ *                         description: Confirmed payment inflow for the month
+ *                         example: 3000000
+ *                       outflow:
+ *                         type: number
+ *                         description: Expense and payroll outflow for the month
+ *                         example: 1700000
+ *                       net:
+ *                         type: number
+ *                         description: Monthly net cash flow
+ *                         example: 1300000
+ *                       paymentsReceived:
+ *                         type: integer
+ *                         description: Number of confirmed payments received during the month
+ *                         example: 24
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - insufficient permissions
+ *       500:
+ *         description: Internal server error
+ */
+
 export async function GET(request: NextRequest) {
   try {
     const auth = await authorize("reports:read");

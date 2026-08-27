@@ -9,6 +9,31 @@ import {
 } from "@/lib/api-utils";
 import { updateCustomerSchema } from "@/lib/validators/customer";
 
+/**
+ * @swagger
+ * /api/customers/{id}:
+ *   get:
+ *     summary: Get customer details
+ *     tags:
+ *       - Customers
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: customer-id
+ *     responses:
+ *       200:
+ *         description: Customer retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Customer not found
+ */
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -51,6 +76,45 @@ export async function GET(
     return serverErrorResponse(error);
   }
 }
+
+/**
+ * @swagger
+ * /api/customers/{id}:
+ *   patch:
+ *     summary: Update a customer
+ *     tags:
+ *       - Customers
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               firstName:
+ *                 type: string
+ *               lastName:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               city:
+ *                 type: string
+ *               notes:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Customer updated successfully
+ *       404:
+ *         description: Customer not found
+ */
 
 export async function PATCH(
   request: NextRequest,

@@ -27,6 +27,46 @@ async function generateBookingNumber(): Promise<string> {
   return `${prefix}${String(nextNum).padStart(4, "0")}`;
 }
 
+/**
+ * @swagger
+ * /api/bookings:
+ *   get:
+ *     summary: Get all bookings
+ *     tags:
+ *       - Bookings
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: projectId
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: customerId
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Bookings retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ */
 export async function GET(request: NextRequest) {
   try {
     const session = await getAuthSession();
@@ -98,6 +138,67 @@ export async function GET(request: NextRequest) {
   }
 }
 
+
+/**
+ * @swagger
+ * /api/bookings:
+ *   post:
+ *     summary: Create a booking
+ *     tags:
+ *       - Bookings
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - customerId
+ *               - plotId
+ *               - totalPrice
+ *             properties:
+ *               customerId:
+ *                 type: string
+ *               plotId:
+ *                 type: string
+ *               totalPrice:
+ *                 type: number
+ *                 example: 5000000
+ *               bookingAmount:
+ *                 type: number
+ *                 example: 500000
+ *               downPayment:
+ *                 type: number
+ *                 example: 500000
+ *               developmentCharges:
+ *                 type: number
+ *                 example: 100000
+ *               possessionCharges:
+ *                 type: number
+ *                 example: 50000
+ *               otherCharges:
+ *                 type: number
+ *                 example: 0
+ *               discount:
+ *                 type: number
+ *                 example: 0
+ *               installmentPlanId:
+ *                 type: string
+ *               installmentMonths:
+ *                 type: integer
+ *                 example: 12
+ *               notes:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Booking created successfully
+ *       400:
+ *         description: Invalid booking data or plot unavailable
+ *       404:
+ *         description: Customer not found
+ */
 export async function POST(request: NextRequest) {
   try {
     const session = await getAuthSession();

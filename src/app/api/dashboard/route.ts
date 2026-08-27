@@ -2,6 +2,23 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthSession, unauthorizedResponse, serverErrorResponse } from "@/lib/api-utils";
 
+/**
+ * @swagger
+ * /api/dashboard:
+ *   get:
+ *     summary: Get dashboard statistics
+ *     description: Returns projects, customers, plots, bookings, recent payments and overdue installments.
+ *     tags:
+ *       - Dashboard
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Dashboard data retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ */
+
 export async function GET() {
   try {
     const session = await getAuthSession();

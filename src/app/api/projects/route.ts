@@ -10,6 +10,288 @@ import {
 } from "@/lib/api-utils";
 import { createProjectSchema } from "@/lib/validators/project";
 
+/**
+ * @swagger
+ * /api/projects:
+ *   get:
+ *     tags:
+ *       - Projects
+ *     summary: Get all projects
+ *     description: Get a paginated list of projects belonging to the current user's organization. Supports searching, filtering, sorting, and project statistics.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         description: Page number
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         description: Number of projects per page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 10
+ *       - in: query
+ *         name: search
+ *         required: false
+ *         description: Search projects by name or city
+ *         schema:
+ *           type: string
+ *           example: DHA
+ *       - in: query
+ *         name: status
+ *         required: false
+ *         description: Filter projects by status
+ *         schema:
+ *           type: string
+ *           example: ACTIVE
+ *       - in: query
+ *         name: type
+ *         required: false
+ *         description: Filter projects by project type
+ *         schema:
+ *           type: string
+ *           example: RESIDENTIAL
+ *       - in: query
+ *         name: sortBy
+ *         required: false
+ *         description: Field to sort by
+ *         schema:
+ *           type: string
+ *           example: createdAt
+ *       - in: query
+ *         name: sortOrder
+ *         required: false
+ *         description: Sort direction
+ *         schema:
+ *           type: string
+ *           enum:
+ *             - asc
+ *             - desc
+ *           default: desc
+ *     responses:
+ *       200:
+ *         description: Projects retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Project'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                       example: 1
+ *                     limit:
+ *                       type: integer
+ *                       example: 10
+ *                     total:
+ *                       type: integer
+ *                       example: 25
+ *                     totalPages:
+ *                       type: integer
+ *                       example: 3
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ *
+ *   post:
+ *     tags:
+ *       - Projects
+ *     summary: Create a new project
+ *     description: Create a new real estate project for the current user's organization.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateProjectRequest'
+ *     responses:
+ *       201:
+ *         description: Project created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Project'
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ *
+ * components:
+ *   schemas:
+ *     CreateProjectRequest:
+ *       type: object
+ *       required:
+ *         - name
+ *         - type
+ *       properties:
+ *         name:
+ *           type: string
+ *           minLength: 1
+ *           example: Green Valley Housing Scheme
+ *         type:
+ *           type: string
+ *           example: RESIDENTIAL
+ *         description:
+ *           type: string
+ *           nullable: true
+ *           example: Premium residential housing project
+ *         addressLine1:
+ *           type: string
+ *           nullable: true
+ *           example: Main Boulevard
+ *         city:
+ *           type: string
+ *           nullable: true
+ *           example: Lahore
+ *         state:
+ *           type: string
+ *           nullable: true
+ *           example: Punjab
+ *         country:
+ *           type: string
+ *           nullable: true
+ *           example: Pakistan
+ *         latitude:
+ *           type: number
+ *           nullable: true
+ *           example: 31.5204
+ *         longitude:
+ *           type: number
+ *           nullable: true
+ *           example: 74.3587
+ *         totalArea:
+ *           type: number
+ *           nullable: true
+ *           example: 500
+ *         areaUnit:
+ *           type: string
+ *           nullable: true
+ *           example: ACRES
+ *         totalPlots:
+ *           type: integer
+ *           nullable: true
+ *           example: 1000
+ *         startDate:
+ *           type: string
+ *           format: date-time
+ *           nullable: true
+ *           example: 2026-01-01T00:00:00.000Z
+ *         expectedCompletion:
+ *           type: string
+ *           format: date-time
+ *           nullable: true
+ *           example: 2028-12-31T00:00:00.000Z
+ *         totalBudget:
+ *           type: number
+ *           nullable: true
+ *           example: 500000000
+ *
+ *     Project:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           example: clxproject123
+ *         organizationId:
+ *           type: string
+ *           example: clxorganization123
+ *         slug:
+ *           type: string
+ *           example: green-valley-housing-scheme
+ *         name:
+ *           type: string
+ *           example: Green Valley Housing Scheme
+ *         type:
+ *           type: string
+ *           example: RESIDENTIAL
+ *         description:
+ *           type: string
+ *           nullable: true
+ *         addressLine1:
+ *           type: string
+ *           nullable: true
+ *         city:
+ *           type: string
+ *           nullable: true
+ *           example: Lahore
+ *         state:
+ *           type: string
+ *           nullable: true
+ *           example: Punjab
+ *         country:
+ *           type: string
+ *           nullable: true
+ *           example: Pakistan
+ *         latitude:
+ *           type: number
+ *           nullable: true
+ *         longitude:
+ *           type: number
+ *           nullable: true
+ *         totalArea:
+ *           type: number
+ *           nullable: true
+ *         areaUnit:
+ *           type: string
+ *           nullable: true
+ *         totalPlots:
+ *           type: integer
+ *           nullable: true
+ *         startDate:
+ *           type: string
+ *           format: date-time
+ *           nullable: true
+ *         expectedCompletion:
+ *           type: string
+ *           format: date-time
+ *           nullable: true
+ *         totalBudget:
+ *           type: number
+ *           nullable: true
+ *         stats:
+ *           type: object
+ *           properties:
+ *             totalPlots:
+ *               type: integer
+ *               example: 1000
+ *             totalBlocks:
+ *               type: integer
+ *               example: 10
+ *             available:
+ *               type: integer
+ *               example: 450
+ *             booked:
+ *               type: integer
+ *               example: 350
+ *             sold:
+ *               type: integer
+ *               example: 200
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ */
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getAuthSession();
@@ -63,6 +345,8 @@ export async function GET(request: NextRequest) {
     return serverErrorResponse(error);
   }
 }
+
+
 
 export async function POST(request: NextRequest) {
   try {

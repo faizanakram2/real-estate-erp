@@ -10,6 +10,45 @@ import {
 } from "@/lib/api-utils";
 import { createCustomerSchema } from "@/lib/validators/customer";
 
+/**
+ * @swagger
+ * /api/customers:
+ *   get:
+ *     summary: Get all customers
+ *     description: Returns paginated customers for the authenticated organization.
+ *     tags:
+ *       - Customers
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           example: 10
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           example: ACTIVE
+ *     responses:
+ *       200:
+ *         description: Customers retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getAuthSession();
@@ -65,6 +104,65 @@ export async function GET(request: NextRequest) {
   }
 }
 
+
+/**
+ * @swagger
+ * /api/customers:
+ *   post:
+ *     summary: Create a customer
+ *     tags:
+ *       - Customers
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - firstName
+ *               - lastName
+ *               - phone
+ *             properties:
+ *               firstName:
+ *                 type: string
+ *                 example: Muhammad
+ *               lastName:
+ *                 type: string
+ *                 example: Ahmed
+ *               email:
+ *                 type: string
+ *                 example: muhammad@example.com
+ *               phone:
+ *                 type: string
+ *                 example: "03001234567"
+ *               cnic:
+ *                 type: string
+ *                 example: "35202-1234567-1"
+ *               city:
+ *                 type: string
+ *                 example: Lahore
+ *               country:
+ *                 type: string
+ *                 example: PK
+ *               monthlyIncome:
+ *                 type: number
+ *                 example: 150000
+ *               source:
+ *                 type: string
+ *                 example: Website
+ *               notes:
+ *                 type: string
+ *                 example: Customer created from Swagger
+ *     responses:
+ *       201:
+ *         description: Customer created successfully
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ */
 export async function POST(request: NextRequest) {
   try {
     const session = await getAuthSession();

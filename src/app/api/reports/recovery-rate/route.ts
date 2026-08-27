@@ -7,6 +7,101 @@ import { serverErrorResponse } from "@/lib/api-utils";
  * GET /api/reports/recovery-rate
  * Recovery rate by project and sales agent
  */
+
+/**
+ * @swagger
+ * /api/reports/recovery-rate:
+ *   get:
+ *     summary: Get recovery rate report
+ *     description: >
+ *       Returns recovery rate analysis by project and sales agent.
+ *       The project recovery rate compares amounts collected from
+ *       installments against the total amount due up to the current date.
+ *       The sales agent recovery rate compares total confirmed payments
+ *       against the total booking amounts created by each sales agent.
+ *     tags:
+ *       - Reports
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: months
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 6
+ *         description: Number of previous months to consider for the recovery report.
+ *         example: 6
+ *     responses:
+ *       200:
+ *         description: Recovery rate report generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 byProject:
+ *                   type: array
+ *                   description: Recovery performance grouped by project.
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       projectId:
+ *                         type: string
+ *                         format: uuid
+ *                         example: "7d7c3f5e-6c20-4f1d-9d4a-123456789abc"
+ *                       projectName:
+ *                         type: string
+ *                         example: "Green Valley Housing Society"
+ *                       totalExpected:
+ *                         type: number
+ *                         format: double
+ *                         example: 15000000
+ *                       totalCollected:
+ *                         type: number
+ *                         format: double
+ *                         example: 12000000
+ *                       recoveryRate:
+ *                         type: integer
+ *                         description: Recovery percentage.
+ *                         example: 80
+ *                 byAgent:
+ *                   type: array
+ *                   description: Recovery performance grouped by sales agent.
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       agentId:
+ *                         type: string
+ *                         format: uuid
+ *                         example: "2f8b9c1a-1234-4abc-9876-abcdef123456"
+ *                       agentName:
+ *                         type: string
+ *                         example: "Ahmed Raza"
+ *                       totalBookings:
+ *                         type: integer
+ *                         example: 25
+ *                       totalBooked:
+ *                         type: number
+ *                         format: double
+ *                         example: 25000000
+ *                       totalCollected:
+ *                         type: number
+ *                         format: double
+ *                         example: 20000000
+ *                       recoveryRate:
+ *                         type: integer
+ *                         description: Recovery percentage.
+ *                         example: 80
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Insufficient permissions
+ *       500:
+ *         description: Internal server error
+ */
+
 export async function GET(request: NextRequest) {
   try {
     const auth = await authorize("reports:read");

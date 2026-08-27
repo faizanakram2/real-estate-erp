@@ -7,6 +7,84 @@ import { serverErrorResponse } from "@/lib/api-utils";
  * GET /api/reports/collection-forecast
  * Expected vs actual collections for next 6 months
  */
+
+/**
+ * @swagger
+ * /api/reports/collection-forecast:
+ *   get:
+ *     summary: Get collection forecast
+ *     description: >
+ *       Returns the expected versus actual installment collections for the
+ *       upcoming months. The report includes expected collection amounts,
+ *       collected amounts, installment counts, and collection rates.
+ *       Optionally, the forecast can be filtered by project.
+ *     tags:
+ *       - Reports
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: months
+ *         required: false
+ *         description: Number of upcoming months to include in the forecast
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 6
+ *           example: 6
+ *       - in: query
+ *         name: projectId
+ *         required: false
+ *         description: Filter the collection forecast by a specific project ID
+ *         schema:
+ *           type: string
+ *           example: "clx1234567890abcdef"
+ *     responses:
+ *       200:
+ *         description: Collection forecast generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 forecast:
+ *                   type: array
+ *                   description: Monthly collection forecast
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       month:
+ *                         type: string
+ *                         description: Month and year of the forecast
+ *                         example: "Sep 2026"
+ *                       expectedAmount:
+ *                         type: number
+ *                         description: Total installment amount expected during the month
+ *                         example: 5000000
+ *                       expectedCount:
+ *                         type: integer
+ *                         description: Number of installments expected during the month
+ *                         example: 25
+ *                       collectedAmount:
+ *                         type: number
+ *                         description: Total amount collected from paid installments
+ *                         example: 3500000
+ *                       collectedCount:
+ *                         type: integer
+ *                         description: Number of paid installments
+ *                         example: 18
+ *                       collectionRate:
+ *                         type: number
+ *                         description: Percentage of expected installments that have been collected
+ *                         example: 72
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - insufficient permissions
+ *       500:
+ *         description: Internal server error
+ */
+
 export async function GET(request: NextRequest) {
   try {
     const auth = await authorize("reports:read");

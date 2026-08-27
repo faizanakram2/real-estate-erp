@@ -25,6 +25,203 @@ async function generateReceiptNumber(): Promise<string> {
   return `${prefix}${String(nextNum).padStart(5, "0")}`;
 }
 
+/**
+ * @swagger
+ * /api/payments:
+ *   get:
+ *     summary: Get all payments
+ *     description: Returns a paginated list of payment records.
+ *     tags:
+ *       - Payments
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         description: Page number
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *           minimum: 1
+ *
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         description: Number of records per page
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *           minimum: 1
+ *
+ *       - in: query
+ *         name: search
+ *         required: false
+ *         description: Search by receipt number, reference number, or customer name
+ *         schema:
+ *           type: string
+ *         example: REC-2026-00001
+ *
+ *       - in: query
+ *         name: status
+ *         required: false
+ *         description: Filter payments by payment status
+ *         schema:
+ *           type: string
+ *         example: PENDING
+ *
+ *       - in: query
+ *         name: bookingId
+ *         required: false
+ *         description: Filter payments by booking ID
+ *         schema:
+ *           type: string
+ *         example: clxbooking123
+ *
+ *       - in: query
+ *         name: customerId
+ *         required: false
+ *         description: Filter payments by customer ID
+ *         schema:
+ *           type: string
+ *         example: clxcustomer123
+ *
+ *       - in: query
+ *         name: sortOrder
+ *         required: false
+ *         description: Sort payments by payment date
+ *         schema:
+ *           type: string
+ *           enum:
+ *             - asc
+ *             - desc
+ *           default: desc
+ *
+ *     responses:
+ *       "200":
+ *         description: Paginated list of payments returned successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *                     total:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *
+ *       "401":
+ *         description: Unauthorized
+ *
+ *       "500":
+ *         description: Internal server error
+ *
+ *   post:
+ *     summary: Create a payment record
+ *     description: Creates a new payment record. The receipt number is generated automatically.
+ *     tags:
+ *       - Payments
+ *     security:
+ *       - cookieAuth: []
+ *
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - customerId
+ *               - bookingId
+ *               - amount
+ *               - paymentMethod
+ *               - paymentDate
+ *             properties:
+ *               customerId:
+ *                 type: string
+ *                 example: clxcustomer123
+ *
+ *               bookingId:
+ *                 type: string
+ *                 example: clxbooking123
+ *
+ *               installmentId:
+ *                 type: string
+ *                 example: clxinstallment123
+ *
+ *               amount:
+ *                 type: number
+ *                 minimum: 0
+ *                 example: 500000
+ *
+ *               paymentMethod:
+ *                 type: string
+ *                 example: BANK_TRANSFER
+ *
+ *               paymentDate:
+ *                 type: string
+ *                 format: date-time
+ *                 example: "2026-08-27T10:30:00.000Z"
+ *
+ *               referenceNumber:
+ *                 type: string
+ *                 example: TXN-123456789
+ *
+ *               bankName:
+ *                 type: string
+ *                 example: Meezan Bank
+ *
+ *               chequeNumber:
+ *                 type: string
+ *                 example: CHQ-123456
+ *
+ *               chequeDate:
+ *                 type: string
+ *                 format: date-time
+ *
+ *               notes:
+ *                 type: string
+ *
+ *           example:
+ *             customerId: clxcustomer123
+ *             bookingId: clxbooking123
+ *             installmentId: clxinstallment123
+ *             amount: 500000
+ *             paymentMethod: BANK_TRANSFER
+ *             paymentDate: "2026-08-27T10:30:00.000Z"
+ *             referenceNumber: TXN-123456789
+ *             bankName: Meezan Bank
+ *             notes: Payment received successfully
+ *
+ *     responses:
+ *       "201":
+ *         description: Payment record created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *
+ *       "400":
+ *         description: Validation error
+ *
+ *       "401":
+ *         description: Unauthorized
+ *
+ *       "500":
+ *         description: Internal server error
+ */
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getAuthSession();
@@ -95,6 +292,7 @@ export async function GET(request: NextRequest) {
     return serverErrorResponse(error);
   }
 }
+
 
 export async function POST(request: NextRequest) {
   try {

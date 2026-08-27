@@ -21,6 +21,103 @@ function toCSV(headers: string[], rows: any[][]): string {
  * GET /api/export/:type
  * Export data as CSV. Types: customers, plots, bookings, payments, installments, employees
  */
+
+/**
+ * @swagger
+ * /api/export/{type}:
+ *   get:
+ *     summary: Export data as CSV
+ *     description: |
+ *       Exports organization data as a CSV file.
+ *
+ *       Supported export types:
+ *       - customers
+ *       - plots
+ *       - bookings
+ *       - payments
+ *       - installments
+ *       - employees
+ *
+ *       The authenticated user must have the reports:read permission.
+ *     tags:
+ *       - Exports
+ *     security:
+ *       - bearerAuth: []
+ *
+ *     parameters:
+ *       - in: path
+ *         name: type
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum:
+ *             - customers
+ *             - plots
+ *             - bookings
+ *             - payments
+ *             - installments
+ *             - employees
+ *         description: Type of data to export.
+ *         example: customers
+ *
+ *       - in: query
+ *         name: projectId
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: |
+ *           Project ID used when exporting plots.
+ *           If provided, only plots belonging to this project are exported.
+ *         example: "project_123"
+ *
+ *       - in: query
+ *         name: bookingId
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: |
+ *           Booking ID used when exporting installments.
+ *           If provided, only installments belonging to this booking are exported.
+ *         example: "booking_123"
+ *
+ *     responses:
+ *       200:
+ *         description: CSV file generated successfully.
+ *         content:
+ *           text/csv:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *         headers:
+ *           Content-Disposition:
+ *             schema:
+ *               type: string
+ *             description: CSV file download header.
+ *             example: 'attachment; filename="customers.csv"'
+ *
+ *       400:
+ *         description: |
+ *           Invalid export type. Valid types are customers, plots, bookings,
+ *           payments, installments, and employees.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Unknown export type: invalid. Valid: customers, plots, bookings, payments, installments, employees"
+ *
+ *       401:
+ *         description: Unauthorized. Authentication is required.
+ *
+ *       403:
+ *         description: Forbidden. The user does not have the reports:read permission.
+ *
+ *       500:
+ *         description: Internal server error.
+ */
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { type: string } }

@@ -25,3 +25,50 @@ body {
     text-wrap: balance;
   }
 }
+
+
+.swagger-container {
+  background: #ffffff;
+  color: #3b4151;
+  min-height: 100vh;
+}
+
+.swagger-container .swagger-ui {
+  color: #3b4151;
+}
+
+.swagger-container .swagger-ui .info .title {
+  color: #3b4151;
+}
+
+.swagger-container .swagger-ui .opblock-tag {
+  color: #3b4151;
+}
+
+.swagger-container .swagger-ui .opblock-summary-description {
+  color: #3b4151;
+}
+
+.swagger-container .swagger-ui table thead tr td,
+.swagger-container .swagger-ui table thead tr th {
+  color: #3b4151;
+}
+
+.swagger-container .swagger-ui .response-col_status {
+  color: #3b4151;
+}
+
+.swagger-container .swagger-ui .response-col_description {
+  color: #3b4151;
+}
+
+.swagger-container .swagger-ui label {
+  color: #3b4151;
+}
+
+.swagger-container .swagger-ui input,
+.swagger-container .swagger-ui textarea,
+.swagger-container .swagger-ui select {
+  color: #3b4151;
+  background: #ffffff;
+}
