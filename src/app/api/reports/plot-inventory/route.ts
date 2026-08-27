@@ -7,6 +7,141 @@ import { serverErrorResponse } from "@/lib/api-utils";
  * GET /api/reports/plot-inventory
  * Plot inventory summary by project, block, type, status
  */
+
+/**
+ * @swagger
+ * /api/reports/plot-inventory:
+ *   get:
+ *     summary: Get plot inventory report
+ *     description: |
+ *       Returns a plot inventory summary grouped by status, type, and project.
+ *       Includes total plot count, total value, available plots, booked plots,
+ *       sold plots, and available plot value.
+ *       Optionally filters the report by project.
+ *     tags:
+ *       - Reports
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: projectId
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: Filter inventory by project ID
+ *         example: "8f7c6d5e-4a3b-2c1d-9876-123456789abc"
+ *
+ *     responses:
+ *       200:
+ *         description: Plot inventory report retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 summary:
+ *                   type: object
+ *                   properties:
+ *                     totalPlots:
+ *                       type: integer
+ *                       description: Total number of plots
+ *                       example: 250
+ *                     totalValue:
+ *                       type: number
+ *                       format: double
+ *                       description: Total value of all plots
+ *                       example: 125000000
+ *
+ *                 byStatus:
+ *                   type: array
+ *                   description: Plot inventory grouped by plot status
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       status:
+ *                         type: string
+ *                         description: Plot status
+ *                         example: "AVAILABLE"
+ *                       count:
+ *                         type: integer
+ *                         example: 120
+ *                       value:
+ *                         type: number
+ *                         format: double
+ *                         example: 60000000
+ *
+ *                 byType:
+ *                   type: array
+ *                   description: Plot inventory grouped by plot type
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       type:
+ *                         type: string
+ *                         description: Plot type
+ *                         example: "RESIDENTIAL"
+ *                       count:
+ *                         type: integer
+ *                         example: 180
+ *                       value:
+ *                         type: number
+ *                         format: double
+ *                         example: 90000000
+ *
+ *                 byProject:
+ *                   type: array
+ *                   description: Plot inventory grouped by project
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       projectId:
+ *                         type: string
+ *                         example: "8f7c6d5e-4a3b-2c1d-9876-123456789abc"
+ *                       projectName:
+ *                         type: string
+ *                         example: "Green Valley Housing"
+ *                       total:
+ *                         type: integer
+ *                         description: Total plots in the project
+ *                         example: 100
+ *                       available:
+ *                         type: integer
+ *                         description: Available plots
+ *                         example: 50
+ *                       booked:
+ *                         type: integer
+ *                         description: Booked plots
+ *                         example: 30
+ *                       sold:
+ *                         type: integer
+ *                         description: Sold plots
+ *                         example: 20
+ *                       totalValue:
+ *                         type: number
+ *                         format: double
+ *                         description: Total value of all plots in the project
+ *                         example: 50000000
+ *                       availableValue:
+ *                         type: number
+ *                         format: double
+ *                         description: Total value of available plots
+ *                         example: 25000000
+ *
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Unauthorized"
+ *
+ *       500:
+ *         description: Internal server error
+ */
+
 export async function GET(request: NextRequest) {
   try {
     const auth = await authorize("reports:read");

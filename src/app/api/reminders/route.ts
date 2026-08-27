@@ -9,6 +9,49 @@ import { serverErrorResponse } from "@/lib/api-utils";
  * Creates in-app notifications (ready for SMS/WhatsApp integration).
  * Call daily via cron or manually.
  */
+
+/**
+ * @swagger
+ * /api/reminders:
+ *   post:
+ *     summary: Generate payment reminders
+ *     description: >
+ *       Generates payment reminders for upcoming and overdue installments.
+ *       Creates in-app notifications for the relevant users. This endpoint
+ *       is intended to be called daily by a cron job or manually by an
+ *       authorized administrator/accountant.
+ *     tags:
+ *       - Reminders
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Payment reminders generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "8 reminders generated"
+ *                 upcoming:
+ *                   type: integer
+ *                   example: 5
+ *                 overdue:
+ *                   type: integer
+ *                   example: 3
+ *                 notificationsCreated:
+ *                   type: integer
+ *                   example: 8
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - insufficient permissions
+ *       500:
+ *         description: Internal server error
+ */
+
 export async function POST(_request: NextRequest) {
   try {
     const auth = await authorize("installments:write");
@@ -145,6 +188,48 @@ export async function POST(_request: NextRequest) {
  * GET /api/reminders
  * Preview what reminders would be sent (dry run)
  */
+
+/**
+ * @swagger
+ * /api/reminders:
+ *   get:
+ *     summary: Preview payment reminders
+ *     description: >
+ *       Returns a dry-run summary showing how many installments are currently
+ *       eligible for upcoming and overdue payment reminders. This endpoint
+ *       does not create any notifications.
+ *     tags:
+ *       - Reminders
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Reminder preview returned successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 upcomingReminders:
+ *                   type: integer
+ *                   description: Number of installments due within the next 7 days
+ *                   example: 5
+ *                 overdueReminders:
+ *                   type: integer
+ *                   description: Number of overdue installments
+ *                   example: 3
+ *                 total:
+ *                   type: integer
+ *                   description: Total upcoming and overdue reminders
+ *                   example: 8
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - insufficient permissions
+ *       500:
+ *         description: Internal server error
+ */
+
 export async function GET(_request: NextRequest) {
   try {
     const auth = await authorize("installments:read");

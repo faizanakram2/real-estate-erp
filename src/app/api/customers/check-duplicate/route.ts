@@ -6,6 +6,36 @@ import { getAuthSession, unauthorizedResponse, serverErrorResponse } from "@/lib
  * GET /api/customers/check-duplicate?phone=xxx&cnic=xxx
  * Check if a customer already exists before creating
  */
+
+/**
+ * @swagger
+ * /api/customers/check-duplicate:
+ *   get:
+ *     summary: Check duplicate customer
+ *     description: Checks whether a customer already exists using phone, CNIC, or email.
+ *     tags:
+ *       - Customers
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: phone
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: cnic
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: email
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Duplicate check completed
+ *       400:
+ *         description: At least one parameter is required
+ */
 export async function GET(request: NextRequest) {
   try {
     const session = await getAuthSession();

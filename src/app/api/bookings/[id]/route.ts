@@ -12,6 +12,293 @@ import {
   transferBookingSchema,
 } from "@/lib/validators/booking";
 
+/**
+ * @swagger
+ * /api/bookings/{id}:
+ *   get:
+ *     summary: Get booking details
+ *     description: |
+ *       Retrieves complete details for a specific booking.
+ *
+ *       The response includes:
+ *       - Customer information
+ *       - Plot information
+ *       - Project and block information
+ *       - Installments
+ *       - Payment records
+ *       - Documents
+ *       - Installment plan
+ *       - Booking creator
+ *       - Payment and overdue summary
+ *
+ *     tags:
+ *       - Bookings
+ *
+ *     security:
+ *       - cookieAuth: []
+ *
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: Booking ID.
+ *         schema:
+ *           type: string
+ *         example: clxbooking123
+ *
+ *     responses:
+ *       200:
+ *         description: Booking retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                   example: clxbooking123
+ *
+ *                 bookingNumber:
+ *                   type: string
+ *                   example: BK-2026-0001
+ *
+ *                 status:
+ *                   type: string
+ *                   example: ACTIVE
+ *
+ *                 totalPrice:
+ *                   type: number
+ *                   example: 5000000
+ *
+ *                 bookingAmount:
+ *                   type: number
+ *                   example: 500000
+ *
+ *                 downPayment:
+ *                   type: number
+ *                   example: 1000000
+ *
+ *                 netAmount:
+ *                   type: number
+ *                   example: 5000000
+ *
+ *                 customer:
+ *                   type: object
+ *
+ *                 plot:
+ *                   type: object
+ *
+ *                 installments:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *
+ *                 paymentRecords:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *
+ *                 documents:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *
+ *                 installmentPlan:
+ *                   type: object
+ *                   nullable: true
+ *
+ *                 createdBy:
+ *                   type: object
+ *
+ *                 summary:
+ *                   type: object
+ *                   properties:
+ *                     totalPaid:
+ *                       type: number
+ *                       example: 1500000
+ *
+ *                     totalDue:
+ *                       type: number
+ *                       example: 3500000
+ *
+ *                     overdueCount:
+ *                       type: integer
+ *                       example: 2
+ *
+ *                     overdueAmount:
+ *                       type: number
+ *                       example: 200000
+ *
+ *       401:
+ *         description: Unauthorized.
+ *
+ *       404:
+ *         description: Booking not found.
+ *
+ *       500:
+ *         description: Internal server error.
+ *
+ *   delete:
+ *     summary: Cancel booking
+ *     description: |
+ *       Cancels an existing booking.
+ *
+ *       The booking must have one of the following statuses:
+ *       - BOOKED
+ *       - CONFIRMED
+ *       - ACTIVE
+ *
+ *       When a booking is cancelled:
+ *       - Booking status becomes CANCELLED
+ *       - Cancellation date is recorded
+ *       - The plot becomes AVAILABLE again
+ *       - Pending and partial installments become WAIVED
+ *
+ *     tags:
+ *       - Bookings
+ *
+ *     security:
+ *       - cookieAuth: []
+ *
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: Booking ID to cancel.
+ *         schema:
+ *           type: string
+ *         example: clxbooking123
+ *
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - cancellationReason
+ *             properties:
+ *               cancellationReason:
+ *                 type: string
+ *                 example: Customer requested cancellation
+ *
+ *               refundAmount:
+ *                 type: number
+ *                 minimum: 0
+ *                 default: 0
+ *                 example: 400000
+ *
+ *               deductionAmount:
+ *                 type: number
+ *                 minimum: 0
+ *                 default: 0
+ *                 example: 100000
+ *
+ *     responses:
+ *       200:
+ *         description: Booking cancelled successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Booking cancelled
+ *
+ *       400:
+ *         description: Validation error.
+ *
+ *       401:
+ *         description: Unauthorized.
+ *
+ *       404:
+ *         description: Booking not found or cannot be cancelled.
+ *
+ *       500:
+ *         description: Internal server error.
+ *
+ *   put:
+ *     summary: Transfer booking to another customer
+ *     description: |
+ *       Transfers an existing booking to another customer in the same organization.
+ *
+ *       The original booking must have one of the following statuses:
+ *       - BOOKED
+ *       - CONFIRMED
+ *       - ACTIVE
+ *
+ *       When transferred:
+ *       - Original booking status becomes TRANSFERRED
+ *       - A new ACTIVE booking is created for the new customer
+ *       - Remaining balance is calculated using confirmed payments
+ *       - The plot status becomes TRANSFERRED
+ *
+ *     tags:
+ *       - Bookings
+ *
+ *     security:
+ *       - cookieAuth: []
+ *
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: Existing booking ID to transfer.
+ *         schema:
+ *           type: string
+ *         example: clxbooking123
+ *
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - newCustomerId
+ *             properties:
+ *               newCustomerId:
+ *                 type: string
+ *                 description: ID of the customer receiving the transferred booking.
+ *                 example: clxnewcustomer123
+ *
+ *               transferFee:
+ *                 type: number
+ *                 minimum: 0
+ *                 default: 0
+ *                 example: 50000
+ *
+ *               notes:
+ *                 type: string
+ *                 example: Booking transferred to new customer.
+ *
+ *     responses:
+ *       200:
+ *         description: Booking transferred successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Booking transferred successfully
+ *
+ *       400:
+ *         description: Validation error.
+ *
+ *       401:
+ *         description: Unauthorized.
+ *
+ *       404:
+ *         description: Booking or new customer not found.
+ *
+ *       500:
+ *         description: Internal server error.
+ */
+
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }

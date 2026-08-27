@@ -28,6 +28,122 @@ const createEmployeeSchema = z.object({
   emergencyPhone: z.string().optional(),
 });
 
+/**
+ * @swagger
+ * /api/employees:
+ *   get:
+ *     summary: Get employees
+ *     description: |
+ *       Returns a paginated list of employees belonging to the authenticated
+ *       user's organization. Supports filtering by department and status,
+ *       searching by employee name, employee code, or phone number, and
+ *       sorting.
+ *     tags:
+ *       - Employees
+ *     security:
+ *       - bearerAuth: []
+ *
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number.
+ *         example: 1
+ *
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 10
+ *         description: Number of employees per page.
+ *         example: 10
+ *
+ *       - in: query
+ *         name: search
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: Search by employee name, employee code, or phone number.
+ *         example: "EMP-001"
+ *
+ *       - in: query
+ *         name: department
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: Filter employees by department.
+ *         example: "Finance"
+ *
+ *       - in: query
+ *         name: status
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: Filter employees by employment status.
+ *         example: "ACTIVE"
+ *
+ *       - in: query
+ *         name: sortBy
+ *         required: false
+ *         schema:
+ *           type: string
+ *           default: createdAt
+ *         description: Field used to sort the employee list.
+ *         example: "firstName"
+ *
+ *       - in: query
+ *         name: sortOrder
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum:
+ *             - asc
+ *             - desc
+ *           default: desc
+ *         description: Sort direction.
+ *         example: "asc"
+ *
+ *     responses:
+ *       200:
+ *         description: Employees retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Employee'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                       example: 1
+ *                     limit:
+ *                       type: integer
+ *                       example: 10
+ *                     total:
+ *                       type: integer
+ *                       example: 25
+ *                     totalPages:
+ *                       type: integer
+ *                       example: 3
+ *
+ *       401:
+ *         description: Unauthorized. Authentication is required.
+ *
+ *       500:
+ *         description: Internal server error.
+ */
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getAuthSession();
@@ -57,6 +173,45 @@ export async function GET(request: NextRequest) {
     return paginatedResponse(employees, total, page, limit);
   } catch (error) { return serverErrorResponse(error); }
 }
+
+/**
+ * @swagger
+ * /api/employees:
+ *   post:
+ *     summary: Create employee
+ *     description: |
+ *       Creates a new employee in the authenticated user's organization.
+ *       The organization ID is automatically taken from the authenticated
+ *       user's session.
+ *     tags:
+ *       - Employees
+ *     security:
+ *       - bearerAuth: []
+ *
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateEmployeeRequest'
+ *
+ *     responses:
+ *       201:
+ *         description: Employee created successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Employee'
+ *
+ *       400:
+ *         description: Validation error.
+ *
+ *       401:
+ *         description: Unauthorized. Authentication is required.
+ *
+ *       500:
+ *         description: Internal server error.
+ */
 
 export async function POST(request: NextRequest) {
   try {

@@ -15,6 +15,169 @@ const splitSchema = z.object({
  * POST /api/installments/:id/split
  * Split a single installment into multiple smaller ones
  */
+
+/**
+ * @swagger
+ * /api/installments/{id}/split:
+ *   post:
+ *     summary: Split an installment
+ *     description: |
+ *       Splits a single PENDING or OVERDUE installment into multiple smaller
+ *       installments.
+ *
+ *       The original installment is marked as WAIVED and the specified number
+ *       of new installments are created using the original installment's
+ *       booking, installment type, and outstanding balance.
+ *
+ *       The final installment receives any remainder caused by dividing the
+ *       original amount equally among the requested parts.
+ *
+ *       The split operation is performed inside a database transaction and
+ *       is recorded in the audit log.
+ *     tags:
+ *       - Installments
+ *     security:
+ *       - bearerAuth: []
+ *
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the installment to split.
+ *         example: "clx123abc456"
+ *
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - parts
+ *               - firstDueDate
+ *             properties:
+ *               parts:
+ *                 type: integer
+ *                 minimum: 2
+ *                 maximum: 12
+ *                 example: 4
+ *                 description: Number of installments to create. Must be between 2 and 12.
+ *
+ *               firstDueDate:
+ *                 type: string
+ *                 format: date-time
+ *                 example: "2026-09-15T00:00:00.000Z"
+ *                 description: Due date of the first newly created installment.
+ *
+ *               intervalDays:
+ *                 type: integer
+ *                 minimum: 7
+ *                 maximum: 90
+ *                 default: 30
+ *                 example: 30
+ *                 description: Number of days between each newly created installment.
+ *
+ *     responses:
+ *       201:
+ *         description: Installment split successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Installment split into 4 parts"
+ *
+ *                 installments:
+ *                   type: array
+ *                   description: Newly created installments.
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         example: "clx987xyz123"
+ *
+ *                       bookingId:
+ *                         type: string
+ *                         example: "booking_123"
+ *
+ *                       installmentNo:
+ *                         type: integer
+ *                         example: 8
+ *
+ *                       type:
+ *                         type: string
+ *                         example: "MONTHLY"
+ *
+ *                       amount:
+ *                         type: number
+ *                         format: double
+ *                         example: 25000
+ *
+ *                       dueDate:
+ *                         type: string
+ *                         format: date-time
+ *                         example: "2026-09-15T00:00:00.000Z"
+ *
+ *                       status:
+ *                         type: string
+ *                         example: "PENDING"
+ *
+ *                       balanceAmount:
+ *                         type: number
+ *                         format: double
+ *                         example: 25000
+ *
+ *                       paidAmount:
+ *                         type: number
+ *                         format: double
+ *                         example: 0
+ *
+ *                       paidDate:
+ *                         type: string
+ *                         format: date-time
+ *                         nullable: true
+ *                         example: null
+ *
+ *                       latePenalty:
+ *                         type: number
+ *                         format: double
+ *                         example: 0
+ *
+ *                       notes:
+ *                         type: string
+ *                         example: "Split 1/4 from installment #7"
+ *
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                         example: "2026-08-27T10:00:00.000Z"
+ *
+ *                       updatedAt:
+ *                         type: string
+ *                         format: date-time
+ *                         example: "2026-08-27T10:00:00.000Z"
+ *
+ *       400:
+ *         description: Validation error. Parts, firstDueDate, or intervalDays is invalid.
+ *
+ *       401:
+ *         description: Unauthorized. Authentication is required.
+ *
+ *       403:
+ *         description: Forbidden. The user does not have the installments:write permission.
+ *
+ *       404:
+ *         description: Installment not found, or the installment cannot be split because it is not PENDING or OVERDUE.
+ *
+ *       500:
+ *         description: Internal server error.
+ */
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }

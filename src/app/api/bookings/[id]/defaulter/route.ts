@@ -8,6 +8,67 @@ import { logAudit } from "@/lib/audit";
  * POST /api/bookings/:id/defaulter
  * Mark a booking as DEFAULTER (manual trigger)
  */
+
+/**
+ * @swagger
+ * /api/bookings/{id}/defaulter:
+ *   post:
+ *     tags:
+ *       - Bookings
+ *     summary: Mark a booking as defaulter
+ *     description: Manually marks a booking and its associated customer as DEFAULTER.
+ *     security:
+ *       - NextAuthSession: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               reason:
+ *                 type: string
+ *                 example: Customer has missed multiple installment payments
+ *     responses:
+ *       200:
+ *         description: Booking successfully marked as defaulter
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Booking not found
+ *
+ *   put:
+ *     tags:
+ *       - Bookings
+ *     summary: Automatically detect and flag defaulters
+ *     description: Marks bookings with 3 or more overdue installments as DEFAULTER.
+ *     security:
+ *       - NextAuthSession: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: bulk-check
+ *     responses:
+ *       200:
+ *         description: Defaulter detection completed successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }

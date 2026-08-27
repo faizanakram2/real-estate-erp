@@ -9,6 +9,39 @@ import {
 } from "@/lib/api-utils";
 import { updateProjectSchema } from "@/lib/validators/project";
 
+/**
+ * @swagger
+ * /api/projects/{id}:
+ *   get:
+ *     tags:
+ *       - Projects
+ *     summary: Get project details
+ *     description: Get detailed information about a specific project, including blocks, plots, construction phases, and related document counts.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Project ID
+ *         schema:
+ *           type: string
+ *         example: "clxproject123"
+ *     responses:
+ *       200:
+ *         description: Project details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Project'
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Project not found
+ *       500:
+ *         description: Internal server error
+ */
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -45,6 +78,47 @@ export async function GET(
   }
 }
 
+/**
+ * @swagger
+ * /api/projects/{id}:
+ *   patch:
+ *     tags:
+ *       - Projects
+ *     summary: Update project
+ *     description: Update an existing project belonging to the current user's organization.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Project ID
+ *         schema:
+ *           type: string
+ *         example: "clxproject123"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateProjectRequest'
+ *     responses:
+ *       200:
+ *         description: Project updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Project'
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Project not found
+ *       500:
+ *         description: Internal server error
+ */
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -79,6 +153,45 @@ export async function PATCH(
     return serverErrorResponse(error);
   }
 }
+
+/**
+ * @swagger
+ * /api/projects/{id}:
+ *   delete:
+ *     tags:
+ *       - Projects
+ *     summary: Delete project
+ *     description: Delete a project. A project cannot be deleted if it already contains plots.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Project ID
+ *         schema:
+ *           type: string
+ *         example: "clxproject123"
+ *     responses:
+ *       200:
+ *         description: Project deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Project deleted
+ *       400:
+ *         description: Cannot delete project with existing plots
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Project not found
+ *       500:
+ *         description: Internal server error
+ */
 
 export async function DELETE(
   request: NextRequest,

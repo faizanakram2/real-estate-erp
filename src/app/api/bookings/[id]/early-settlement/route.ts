@@ -14,6 +14,162 @@ const settlementSchema = z.object({
  * GET /api/bookings/:id/early-settlement
  * Calculate early settlement amount with optional discount
  */
+
+
+/**
+ * @swagger
+ * /api/bookings/{id}/early-settlement:
+ *   get:
+ *     tags:
+ *       - Bookings
+ *     summary: Calculate early settlement amount
+ *     description: >
+ *       Calculates the remaining settlement amount for a booking.
+ *       An optional discount percentage can be applied.
+ *       Requires the bookings:read permission.
+ *     security:
+ *       - NextAuthSession: []
+ *
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Booking ID
+ *         schema:
+ *           type: string
+ *         example: "booking-id-here"
+ *
+ *       - in: query
+ *         name: discountPercent
+ *         required: false
+ *         description: Discount percentage to apply to the remaining amount
+ *         schema:
+ *           type: number
+ *           minimum: 0
+ *           maximum: 50
+ *           default: 0
+ *         example: 10
+ *
+ *     responses:
+ *       200:
+ *         description: Early settlement calculation successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 bookingNumber:
+ *                   type: string
+ *                   example: "BK-2026-0001"
+ *                 netAmount:
+ *                   type: number
+ *                   example: 5000000
+ *                 totalPaid:
+ *                   type: number
+ *                   example: 2000000
+ *                 remainingAmount:
+ *                   type: number
+ *                   example: 3000000
+ *                 totalPenalties:
+ *                   type: number
+ *                   example: 50000
+ *                 pendingInstallments:
+ *                   type: integer
+ *                   example: 12
+ *                 discountPercent:
+ *                   type: number
+ *                   example: 10
+ *                 discountAmount:
+ *                   type: number
+ *                   example: 300000
+ *                 settlementAmount:
+ *                   type: number
+ *                   example: 2750000
+ *
+ *       401:
+ *         description: Unauthorized - Authentication required
+ *
+ *       403:
+ *         description: Forbidden - User does not have bookings read permission
+ *
+ *       404:
+ *         description: Booking not found
+ *
+ *       500:
+ *         description: Internal server error
+ *
+ *   post:
+ *     tags:
+ *       - Bookings
+ *     summary: Complete early settlement
+ *     description: >
+ *       Completes the early settlement process for a booking.
+ *       All pending, partial, and overdue installments are marked as PAID,
+ *       and the associated plot is marked as SOLD.
+ *       Requires the bookings:write permission.
+ *     security:
+ *       - NextAuthSession: []
+ *
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Booking ID
+ *         schema:
+ *           type: string
+ *         example: "booking-id-here"
+ *
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               discountPercent:
+ *                 type: number
+ *                 minimum: 0
+ *                 maximum: 50
+ *                 default: 0
+ *                 description: Discount percentage applied to settlement
+ *                 example: 10
+ *               notes:
+ *                 type: string
+ *                 description: Optional notes for the early settlement
+ *                 example: "Customer completed full payment before schedule"
+ *
+ *     responses:
+ *       200:
+ *         description: Early settlement completed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Early settlement completed successfully"
+ *
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *
+ *       401:
+ *         description: Unauthorized - Authentication required
+ *
+ *       403:
+ *         description: Forbidden - User does not have bookings write permission
+ *
+ *       404:
+ *         description: Booking not found
+ *
+ *       500:
+ *         description: Internal server error
+ */
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
